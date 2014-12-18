@@ -32,10 +32,11 @@ object MinimalBuild extends Build {
     publishArtifact in packageDoc := false,
     // disable using the Scala version in output paths and artifacts
     crossPaths := false,
-    libraryDependencies += "com.typesafe.akka" % "akka-remote" % "2.0",
-    libraryDependencies += "com.typesafe.akka" % "akka-kernel" % "2.0",
-    libraryDependencies += "com.dyuproject.protostuff" % "protostuff-runtime" % "1.0.7",
-    libraryDependencies += "com.dyuproject.protostuff" % "protostuff-runtime-registry" % "1.0.7",
-    libraryDependencies += "com.dyuproject.protostuff" % "protostuff-core" % "1.0.7"
+    scalaVersion in ThisBuild := "2.11.4",
+    libraryDependencies += "com.typesafe.akka" % "akka-remote_2.11" % "2.3.7",
+    libraryDependencies += "com.typesafe.akka" % "akka-kernel_2.11" % "2.3.7",
+    libraryDependencies += "com.dyuproject.protostuff" % "protostuff-runtime" % "1.0.8",
+    libraryDependencies += "com.dyuproject.protostuff" % "protostuff-runtime-registry" % "1.0.8",
+    libraryDependencies += "com.dyuproject.protostuff" % "protostuff-core" % "1.0.8"
     )
 }

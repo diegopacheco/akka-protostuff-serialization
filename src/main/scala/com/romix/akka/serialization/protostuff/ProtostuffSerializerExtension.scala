@@ -16,17 +16,12 @@
 
 package com.romix.akka.serialization.protostuff
 
-import akka.actor.Extension
 import akka.actor.ExtensionId
 import akka.actor.ExtensionIdProvider
-import akka.actor.ExtendedActorSystem
 import com.typesafe.config.Config
 
 import akka.actor.{ ActorSystem, Extension, ExtendedActorSystem, Address, DynamicAccess }
 import akka.event.Logging
-import java.util.concurrent.ConcurrentHashMap
-import scala.collection.mutable.ArrayBuffer
-import java.io.NotSerializableException
 
 object ProtostuffSerialization {
 

@@ -16,36 +16,27 @@
 
 package com.romix.akka.serialization.protostuff
 
+import scala.util.Try
 import akka.serialization._
 import akka.actor.ExtendedActorSystem
 import akka.event.Logging
-import com.typesafe.config.ConfigFactory
 import com.dyuproject.protostuff.ProtostuffIOUtil
 import com.dyuproject.protostuff.GraphIOUtil
 import com.dyuproject.protostuff.LinkedBuffer
-import com.dyuproject.protostuff.runtime.RegistryUtil
-import com.dyuproject.protostuff.runtime.IncrementalIdStrategy
-import com.dyuproject.protostuff.runtime.DefaultIdStrategy
-import com.dyuproject.protostuff.runtime.ExplicitIdStrategy
-import com.dyuproject.protostuff.runtime.IdStrategy
-import com.dyuproject.protostuff.runtime.RuntimeSchema
+import com.dyuproject.protostuff.runtime._
 import com.dyuproject.protostuff.CollectionSchema
 import com.dyuproject.protostuff.MapSchema
-import com.dyuproject.protostuff.runtime.EnumIO
-import java.util.Map
 import scala.collection.JavaConversions._
-
-import scala.util.DynamicVariable
-import java.lang.System
-
-import ProtostuffSerialization._
 
 class ProtostuffSerializer (val system: ExtendedActorSystem) extends Serializer {
 
-	import ProtostuffSerialization._
-	val log = Logging(system, getClass.getName) 
+	import com.romix.akka.serialization.protostuff.ProtostuffSerialization.{Settings}
 
-	val settings = new Settings(system.settings.config)
+	val log = Logging(system, getClass.getName)
+
+	val settings = {
+		new Settings(system.settings.config)
+	}
 
 	val mappings = settings.ClassNameMappings
 
@@ -88,7 +79,7 @@ class ProtostuffSerializer (val system: ExtendedActorSystem) extends Serializer 
 	def identifier = 123454321
 
 	// Delegate to a real serializer
-	def toBinary(obj: AnyRef): Array[Byte] = serializer.toBinary(obj) 
+	def toBinary(obj: AnyRef): Array[Byte] = serializer.toBinary(obj)
 	def fromBinary(bytes: Array[Byte], clazz: Option[Class[_]]): AnyRef = serializer.fromBinary(bytes, clazz)
 
 	private def getIdStrategy(strategy: String): IdStrategy = {
@@ -100,33 +91,33 @@ class ProtostuffSerializer (val system: ExtendedActorSystem) extends Serializer 
 				val maxIdNum = if(!mappings.isEmpty) idNums.max else 1
 
 				val r = new IncrementalIdStrategy.Registry(
-						maxIdNum+1+64, maxIdNum+1, 
-						maxIdNum+1+64, maxIdNum+1, 
+						maxIdNum+1+64, maxIdNum+1,
+						maxIdNum+1+64, maxIdNum+1,
 						maxIdNum+1+64, maxIdNum+1, // enums
 						maxIdNum+1+64, maxIdNum+1) // pojos
 
-				r.registerPojo(classOf[Some[_]], 1)	
+				r.registerPojo(classOf[Some[_]], 1)
 
 				for ((fqcn: String, idNum: String) <- mappings) {
 					val id = idNum.toInt
 					// Load class
 					system.dynamicAccess.getClassFor[AnyRef](fqcn) match {
-					case Right(clazz) => {
+					case clazz:Try[Class[_]] => {
 
 						// Identity what it is: POJO, map, collection, enum
 						// Register it
-						if(clazz.isEnum()) 
+						if(clazz.get.isEnum())
 							r.registerEnum(clazz.asInstanceOf[Class[T] forSome {type T <: java.lang.Enum[T]}], id)
-						else if(classOf[java.util.Map[_, _]].isAssignableFrom(clazz))  
+						else if(classOf[java.util.Map[_, _]].isAssignableFrom(clazz.get))
 							r.registerMap(MapSchema.MessageFactories.getFactory(fqcn), id)
-						else if(classOf[java.util.Collection[_]].isAssignableFrom(clazz))  
+						else if(classOf[java.util.Collection[_]].isAssignableFrom(clazz.get))
 							r.registerCollection(CollectionSchema.MessageFactories.getFactory(fqcn), id)
 						else
-							r.registerPojo(clazz, id)			
+							r.registerPojo(clazz.get, id)
 					}
-					case Left(e) => {  
-							log.error("Class could not be loaded and/or registered: {} ", fqcn) 
-							throw e 
+					case e:Exception => {
+							log.error("Class could not be loaded and/or registered: {} ", fqcn)
+							throw e
 						}
 					}
 				}
@@ -136,10 +127,10 @@ class ProtostuffSerializer (val system: ExtendedActorSystem) extends Serializer 
 					system.dynamicAccess.getClassFor[AnyRef](classname) match {
 						// TODO: IncrementalIdStrategy should allow for registrarion of enums, maps, collections
 						// automatically
-					case Right(clazz) => RegistryUtil.idFrom(clazz, r.strategy)
-					case Left(e) => { 
-							log.warning("Class could not be loaded and/or registered: {} ", classname) 
-							/* throw e */ 
+					case clazz:Try[Class[_]] => RegistryUtil.idFrom(clazz.get, r.strategy)
+					case e => {
+							log.warning("Class could not be loaded and/or registered: {} ", classname)
+							/* throw e */
 						}
 					}
 				}
@@ -147,30 +138,30 @@ class ProtostuffSerializer (val system: ExtendedActorSystem) extends Serializer 
 				return r.strategy
 			}
 
-			case "explicit" => { 
+			case "explicit" => {
 				val r = new ExplicitIdStrategy.Registry()
 
-				r.registerPojo(classOf[Some[_]], 1)					
+				r.registerPojo(classOf[Some[_]], 1)
 
 				for ((fqcn: String, idNum: String) <- mappings) {
 					val id = idNum.toInt
 					// Load class
 					system.dynamicAccess.getClassFor[AnyRef](fqcn) match {
-					case Right(clazz) => {
+					case clazz:Try[Class[_]] => {
 						// Identity what it is: POJO, map, collection, enum
 						// Register it
-						if(clazz.isEnum()) 
+						if(clazz.get.isEnum())
 							r.registerEnum(clazz.asInstanceOf[Class[T] forSome {type T <: java.lang.Enum[T]}], id)
-						else if(classOf[java.util.Map[_, _]].isAssignableFrom(clazz))  
+						else if(classOf[java.util.Map[_, _]].isAssignableFrom(clazz.get))
 							r.registerMap(MapSchema.MessageFactories.getFactory(fqcn), id)
-						else if(classOf[java.util.Collection[_]].isAssignableFrom(clazz))  
+						else if(classOf[java.util.Collection[_]].isAssignableFrom(clazz.get))
 							r.registerCollection(CollectionSchema.MessageFactories.getFactory(fqcn), id)
-						else  
-							r.registerPojo(clazz, id)	
+						else
+							r.registerPojo(clazz.get, id)
 					}
 
-					case Left(e) => { 
-							log.error("Class could not be loaded and/or registered: {} ", fqcn) 
+					case e:Exception => {
+							log.error("Class could not be loaded and/or registered: {} ", fqcn)
 							throw e
 						}
 					}
