@@ -1,6 +1,10 @@
 akka-protostuff-serialization - protostuff-based serializers for Akka
 =====================================================================
 
+* This project was forked by Diego Pacheco in order to add the following capability:
+* Support for Scala 2.11.4
+* Support for Akka 2.3.7
+
 This library provides a custom protostuff-based serializer for Akka. It can be used for more efficient akka actor's remoting. 
 
 Features
